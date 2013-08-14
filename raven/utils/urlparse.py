@@ -13,5 +13,6 @@ def register_scheme(scheme):
         if scheme not in uses:
             uses.append(scheme)
 
-
+_parse_qs = _urlparse.parse_qs
 urlparse = _urlparse.urlparse
+

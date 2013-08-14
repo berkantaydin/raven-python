@@ -20,6 +20,8 @@ from django.utils.http import urlencode
 from raven.base import Client
 from raven.contrib.django.utils import get_data_from_template, get_host
 from raven.utils.wsgi import get_headers, get_environ
+from raven.utils.urlparse import _parse_qs
+from raven.utils import json
 
 __all__ = ('DjangoClient',)
 
@@ -79,11 +81,21 @@ class DjangoClient(Client):
                 if request.sensitive_post_parameters == '__ALL__':
                     data = '<hidden>'
                 elif data != '<unavailable>':
-                    qs = _urlparse.parse_qs(data)
-                    for param in request.sensitive_post_parameters:
-                        if param in qs:
-                            qs[param] = '<hidden>'
-                    data = urlencode(qs, doseq=True)
+                    if request.META.get(
+                            'CONTENT_TYPE',
+                            'application/json') != 'application/json':
+                        qs = _parse_qs(data)
+                        for param in request.sensitive_post_parameters:
+                            if param in qs:
+                                qs[param] = '<hidden>'
+                        data = urlencode(qs, doseq=True)
+                    else:
+                        # json formatted data masking
+                        js = json.loads(data)
+                        for param in request.sensitive_post_parameters:
+                            if param in js:
+                                js[param] = '<hidden>'
+                        data = json.dumps(js)
 
         else:
             data = None
@@ -182,3 +194,4 @@ class DjangoClient(Client):
     def send_integrated(self, kwargs):
         from sentry.models import Group
         return Group.objects.from_kwargs(**kwargs)
+
