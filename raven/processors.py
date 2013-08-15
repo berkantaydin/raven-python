@@ -70,7 +70,7 @@ class SanitizePasswordsProcessor(Processor):
 
         key = key.lower()
         for field in self.FIELDS:
-            if field in key or field == "__ALL__":
+            if self.FIELDS == "__ALL__" or field in key:
                 # store mask as a fixed length for security
                 return self.MASK
         return value
@@ -105,10 +105,12 @@ class SanitizePasswordsProcessor(Processor):
     def process(self, data, **kwargs):
         if 'sentry.interfaces.Http' in data:
             if 'sensitive_post_params' in data['sentry.interfaces.Http']:
-                if data['sentry.interfaces.Http']['sensitive_post_params'] is not False:
-                    self.FIELDS = self.FIELDS.union(data['sentry.interfaces.Http']['sensitive_post_params'])
-                if data['sentry.interfaces.Http']['sensitive_post_params'] is None:
+
+                if data['sentry.interfaces.Http']['sensitive_post_params'] == '__ALL__':
                     self.FIELDS = "__ALL__"
+                elif data['sentry.interfaces.Http']['sensitive_post_params']:
+                    self.FIELDS = self.FIELDS.union(data['sentry.interfaces.Http']['sensitive_post_params'])
+
             self.filter_http(data['sentry.interfaces.Http'])
 
         if 'sentry.interfaces.Stacktrace' in data:
